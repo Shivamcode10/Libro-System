@@ -29,6 +29,29 @@ const BookDetails = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
 
+  // ✅ ADD API BASE
+  const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
+  // ✅ ADD SMART HELPER FUNCTION
+  const getBookCoverUrl = (fileUrl) => {
+    if (!fileUrl) {
+      return "https://via.placeholder.com/300x450?text=No+Cover";
+    }
+
+    // 1. If it's a PDF, we cannot show it in an <img> tag. Return a generic placeholder.
+    if (fileUrl.toLowerCase().endsWith('.pdf')) {
+      return "https://via.placeholder.com/300x450/4F46E5/FFFFFF?text=PDF+Document";
+    }
+
+    // 2. If it contains localhost (Legacy Data), replace it with the live URL
+    if (fileUrl.includes('localhost')) {
+      return fileUrl.replace('http://localhost:5000', API_BASE);
+    }
+
+    // 3. If it's a relative filename (New Data), prepend the base URL
+    return `${API_BASE}/uploads/${fileUrl}`;
+  };
+
   // SCROLL TO REVIEWS
   useEffect(() => {
     if (location.hash === '#reviews-section') {
@@ -211,11 +234,15 @@ const BookDetails = () => {
             </span>
           </div>
           <div className="relative w-64 md:w-80 h-96 shadow-2xl rounded-lg overflow-hidden transform hover:scale-105 transition-transform duration-300">
-            {/* ✅ FIXED: Using dynamic API URL with fallback to placeholder */}
+            {/* ✅ UPDATED: Using the helper function */}
             <img
-              src={book.fileUrl ? `${import.meta.env.VITE_API_URL}/uploads/${book.fileUrl}` : "https://via.placeholder.com/300x450?text=No+Cover"} 
+              src={getBookCoverUrl(book.fileUrl)} 
               alt="Book Cover"
               className="w-full h-full object-cover"
+              onError={(e) => {
+                e.target.onerror = null; 
+                e.target.src = "https://via.placeholder.com/300x450?text=Error+Loading+Image";
+              }}
             />
           </div>
         </div>
