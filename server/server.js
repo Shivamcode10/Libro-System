@@ -22,39 +22,37 @@ connectDB();
 
 const app = express();
 
-// ==========================
-// 🔥 PERFECT CORS HANDLER (RENDER + VERCEL)
-// ==========================
-const allowedOrigins = [
-  "http://localhost:5173",
-  process.env.CLIENT_URL
-];
 
+// ==========================
+// 🌐 GLOBAL CORS HANDLER (FINAL FIX)
+// ==========================
 app.use((req, res, next) => {
   const origin = req.headers.origin;
 
-  // allow only defined origins
-  if (allowedOrigins.includes(origin)) {
-    res.header("Access-Control-Allow-Origin", origin);
+  // reflect requesting origin (required for cookies auth)
+  if (origin) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
   }
 
-  res.header("Access-Control-Allow-Credentials", "true");
-  res.header(
+  res.setHeader("Vary", "Origin");
+  res.setHeader("Access-Control-Allow-Credentials", "true");
+  res.setHeader(
     "Access-Control-Allow-Headers",
     "Origin, X-Requested-With, Content-Type, Accept, Authorization"
   );
-  res.header(
+  res.setHeader(
     "Access-Control-Allow-Methods",
     "GET, POST, PUT, DELETE, PATCH, OPTIONS"
   );
 
-  // handle browser preflight request
+  // handle preflight request
   if (req.method === "OPTIONS") {
-    return res.sendStatus(200);
+    return res.sendStatus(204);
   }
 
   next();
 });
+
 
 // ==========================
 // MIDDLEWARE
@@ -63,12 +61,14 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 
+
 // ==========================
 // ROOT ROUTE
 // ==========================
 app.get("/", (req, res) => {
   res.send("Libro System API Running 🚀");
 });
+
 
 // ==========================
 // ROUTES
@@ -81,6 +81,7 @@ app.use("/api/marketplace", marketplaceRoutes);
 app.use("/api/messages", verifyToken, messageRoutes);
 app.use("/api/requests", verifyToken, requestRoutes);
 app.use("/api/reviews", reviewRoutes);
+
 
 // ==========================
 // STATIC FILES
@@ -98,10 +99,12 @@ app.use(
   })
 );
 
+
 // ==========================
 // ERROR HANDLER
 // ==========================
 app.use(errorHandler);
+
 
 // ==========================
 // SERVER START
