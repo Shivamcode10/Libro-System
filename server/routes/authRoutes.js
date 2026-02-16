@@ -72,16 +72,13 @@ router.post('/login', async (req, res) => {
       { expiresIn: "30d" }
     );
 
-    // ✅ DYNAMIC COOKIE CONFIGURATION
-    // In Production (HTTPS): secure=true, sameSite=none (Cross-Domain)
-    // In Development (HTTP): secure=false, sameSite=lax
     const isProduction = process.env.NODE_ENV === 'production';
 
     res.cookie("token", token, {
       httpOnly: true,
-      secure: isProduction,      // TRUE for Render/Vercel, FALSE for Localhost
-      sameSite: isProduction ? 'none' : 'lax', // 'none' required for Cross-Domain
-      maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days
+      secure: isProduction,
+      sameSite: isProduction ? 'none' : 'lax',
+      maxAge: 30 * 24 * 60 * 60 * 1000
     });
 
     res.status(200).json({
@@ -97,6 +94,23 @@ router.post('/login', async (req, res) => {
     console.error("Login Error:", error);
     res.status(500).json({ message: "Server error" });
   }
+});
+
+
+// ==============================
+// LOGOUT USER (ADDED)
+// ==============================
+router.post('/logout', (req, res) => {
+  const isProduction = process.env.NODE_ENV === 'production';
+
+  res.clearCookie("token", {
+    httpOnly: true,
+    secure: isProduction,
+    sameSite: isProduction ? 'none' : 'lax',
+    path: '/' 
+  });
+
+  res.status(200).json({ message: "Logged out successfully" });
 });
 
 export default router;

@@ -15,7 +15,6 @@ export const AuthProvider = ({ children }) => {
       if (token && userInfoStr) {
         try {
           const parsedUser = JSON.parse(userInfoStr);
-          // SAFETY FIX: Ensure role exists, default to 'user' if missing
           const safeUser = {
             ...parsedUser,
             role: parsedUser.role || 'user' 
@@ -23,7 +22,7 @@ export const AuthProvider = ({ children }) => {
           setUser(safeUser);
         } catch (error) {
           console.error("Failed to parse user info", error);
-          localStorage.removeItem('userInfo'); // Clear corrupted data
+          localStorage.removeItem('userInfo');
         }
       }
       setLoading(false);
@@ -34,9 +33,11 @@ export const AuthProvider = ({ children }) => {
   const login = async (email, password) => {
     try {
       const { data } = await api.post('/auth/login', { email, password });
-      localStorage.setItem('token', data.token);
       
-      // Ensure the user object from backend has a role, default to 'user'
+      // Note: Since we use httpOnly cookies, the token is in the cookie, 
+      // but we also store it in localStorage for quick UI checks if needed.
+      // Ideally, rely on the cookie for API auth.
+      
       const userData = data.user || {};
       const safeUserData = {
         ...userData,
@@ -66,10 +67,19 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const logout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('userInfo');
-    setUser(null);
+  // ✅ FIXED: Make logout async to clear the backend cookie
+  const logout = async () => {
+    try {
+      // Call backend to clear the httpOnly cookie
+      await api.post('/auth/logout');
+    } catch (error) {
+      console.error("Logout API Error:", error);
+      // We continue with local logout even if API fails
+    } finally {
+      localStorage.removeItem('token');
+      localStorage.removeItem('userInfo');
+      setUser(null);
+    }
   };
 
   return (

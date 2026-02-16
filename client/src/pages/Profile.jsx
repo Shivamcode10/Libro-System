@@ -7,6 +7,9 @@ import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import api from '../services/api';
 
+// ✅ ADD THIS CONSTANT
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
 const Profile = () => {
   const { user: authUser, logout } = useAuth();
   const { theme } = useTheme();
@@ -14,14 +17,9 @@ const Profile = () => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   
-  // Stats
   const [issueCount, setIssueCount] = useState(0);
-
-  // Edit Profile State
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({ name: '', phone: '', address: '' });
-
-  // Password State
   const [isPasswordModal, setIsPasswordModal] = useState(false);
   const [passwordData, setPasswordData] = useState({ current: '', new: '' });
 
@@ -30,7 +28,6 @@ const Profile = () => {
   const textMain = theme === 'dark' ? 'text-white' : 'text-gray-900';
   const textSub = theme === 'dark' ? 'text-gray-400' : 'text-gray-500';
 
-  // Fetch User Data & Stats
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -53,7 +50,6 @@ const Profile = () => {
     fetchData();
   }, []);
 
-  // --- FIXED: HANDLE AVATAR UPLOAD ---
   const handleAvatarUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -66,8 +62,6 @@ const Profile = () => {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
       
-      // CRITICAL FIX: Add timestamp to URL to force browser to show the new image
-      // otherwise the browser might show the old cached image
       const updatedUser = { 
         ...data.user, 
         avatar: `${data.user.avatar}?t=${new Date().getTime()}` 
@@ -118,6 +112,13 @@ const Profile = () => {
       </div>
     );
 
+  // ✅ HELPER FUNCTION TO FIX AVATAR URL
+  const getAvatarUrl = (avatar) => {
+    if (!avatar) return `https://ui-avatars.com/api/?name=${user?.name}&background=random`;
+    if (avatar.startsWith('http')) return avatar; // If it's already a full URL
+    return `${API_BASE}/uploads/${avatar}`; // Construct full URL
+  };
+
   return (
     <div className={`${bgClass} min-h-screen py-8 px-4 sm:px-6 lg:px-8`}>
       <div className="max-w-7xl mx-auto">
@@ -136,17 +137,12 @@ const Profile = () => {
             <div className={`${cardBg} rounded-2xl border p-6 sticky top-6 transition-all hover:shadow-xl`}>
               <div className="flex flex-col items-center mb-6">
                 <div className="w-28 h-28 rounded-full border-4 border-white dark:border-gray-800 shadow-lg overflow-hidden relative group">
-                  {/* 
-                     Image styling: 
-                     object-cover = Fills the circle (standard profile look).
-                     object-contain = Shows full image (no crop, but might have whitespace).
-                  */}
                   <img
-                    src={user?.avatar || `https://ui-avatars.com/api/?name=${user?.name}&background=random`}
+                    // ✅ UPDATED: Use the helper function
+                    src={getAvatarUrl(user?.avatar)}
                     alt="avatar"
                     className="w-full h-full object-cover"
                   />
-                  {/* Upload Label Overlay */}
                   <label className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition cursor-pointer">
                     <Camera className="text-white w-6 h-6" />
                     <input 
