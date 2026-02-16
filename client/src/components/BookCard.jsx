@@ -5,6 +5,8 @@ import { Link } from 'react-router-dom';
 import { useTheme } from '../context/ThemeContext';
 import api from '../services/api';
 
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000'; // Fallback added
+
 const BookCard = ({ book, onEdit, onDelete, userId, onRead }) => {
   const { theme } = useTheme();
   const [numPages, setNumPages] = useState(null); 
@@ -15,9 +17,7 @@ const BookCard = ({ book, onEdit, onDelete, userId, onRead }) => {
   // --- UPDATED THEME VARIABLES FOR BETTER CONTRAST ---
   const cardBg = theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-100';
   const textMain = theme === 'dark' ? 'text-white' : 'text-gray-900';
-  // Lightened textSub for dark mode (gray-400 -> gray-300) for better readability
   const textSub = theme === 'dark' ? 'text-gray-300' : 'text-gray-500';
-  // Darker background for image area in dark mode to make preview pop
   const imgBg = theme === 'dark' ? 'bg-gray-900' : 'bg-gray-50';
 
   const onDocumentLoadSuccess = ({ numPages }) => {
@@ -30,7 +30,8 @@ const BookCard = ({ book, onEdit, onDelete, userId, onRead }) => {
     if (book.fileUrl.match(/\.(jpeg|jpg|png|gif)$/i)) {
       renderContent = (
         <img 
-          src={`http://localhost:5000/uploads/${book.fileUrl}`} 
+          // ✅ FIXED: Using dynamic API URL
+          src={`${API_BASE}/uploads/${book.fileUrl}`} 
           alt={book.title} 
           className="w-full h-full object-cover transition-transform duration-300 ease-out group-hover:scale-105"
           loading="lazy"
@@ -41,7 +42,8 @@ const BookCard = ({ book, onEdit, onDelete, userId, onRead }) => {
       renderContent = (
         <div className="w-full h-full flex items-center justify-center relative overflow-hidden bg-white">
            <Document
-             file={`http://localhost:5000/uploads/${book.fileUrl}`}
+             // ✅ FIXED: Using dynamic API URL
+             file={`${API_BASE}/uploads/${book.fileUrl}`}
              loading={<div className={`animate-pulse w-full h-full ${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-200'}`} />}
              error={<div className="text-red-400 text-xs text-center p-4">Preview Error</div>}
              onLoadSuccess={onDocumentLoadSuccess}
@@ -161,7 +163,7 @@ const BookCard = ({ book, onEdit, onDelete, userId, onRead }) => {
               onClick={() => onEdit(book)} 
               className={`col-span-1 text-xs py-2 rounded-xl font-medium border transition-all duration-150 active:scale-95 ${
               theme === 'dark' 
-                ? 'bg-gray-700 text-gray-200 border-gray-600 hover:bg-gray-600 hover:text-white' // IMPROVED CONTRAST
+                ? 'bg-gray-700 text-gray-200 border-gray-600 hover:bg-gray-600 hover:text-white' 
                 : 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100'
             }`}>
               <Edit className="w-3 h-3 inline mr-1"/> Edit
@@ -185,7 +187,7 @@ const BookCard = ({ book, onEdit, onDelete, userId, onRead }) => {
               onClick={() => onDelete(book._id)} 
               className={`col-span-1 text-xs py-2 rounded-xl font-medium border transition-all duration-150 active:scale-95 ${
               theme === 'dark' 
-                ? 'border-red-900/50 text-red-400 hover:bg-red-900/20' // IMPROVED CONTRAST
+                ? 'border-red-900/50 text-red-400 hover:bg-red-900/20' 
                 : 'bg-red-50 text-red-600 border-red-100 hover:bg-red-100'
             }`}>
               <Trash2 className="w-3 h-3 inline mr-1"/> Delete

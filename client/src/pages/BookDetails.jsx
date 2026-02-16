@@ -8,8 +8,6 @@ import {
   Star, Send, Clock, RotateCcw, X, Save, MessageSquare 
 } from 'lucide-react';
 
-
-
 const BookDetails = () => {
   const { id } = useParams();
   const location = useLocation(); 
@@ -169,9 +167,8 @@ const BookDetails = () => {
   const handleRequestBook = async () => {
     if(!requestMsg) return alert("Please tell us why you need this book.");
     try {
-        // --- FIXED: Added bookId for 100% accuracy ---
         await api.post('/requests', { 
-            bookId: book._id, // <--- ADDED THIS LINE
+            bookId: book._id, 
             bookTitle: book.title, 
             author: book.author, 
             message: requestMsg 
@@ -192,7 +189,6 @@ const BookDetails = () => {
   if (error) return <div className="text-center mt-20 text-red-500">{error}</div>;
   if (!book) return null;
 
-  // SAFETY: Default role to 'user' to prevent crash
   const userRole = user?.role || 'user';
 
   return (
@@ -203,10 +199,9 @@ const BookDetails = () => {
         </Link>
       </div>
 
-      {/* === NEW LAYOUT: 2x2 GRID === */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         
-        {/* --- ROW 1, COL 1: IMAGE CONTAINER --- */}
+        {/* IMAGE CONTAINER */}
         <div className="bg-white rounded-2xl shadow-xl p-6 md:p-10 flex items-center justify-center relative h-fit">
           <div className="absolute top-4 left-4 z-10">
             <span className={`px-4 py-1.5 rounded-full text-sm font-bold shadow-sm ${
@@ -216,15 +211,16 @@ const BookDetails = () => {
             </span>
           </div>
           <div className="relative w-64 md:w-80 h-96 shadow-2xl rounded-lg overflow-hidden transform hover:scale-105 transition-transform duration-300">
+            {/* ✅ FIXED: Using dynamic API URL with fallback to placeholder */}
             <img
-              src="..\src\assets\images\bookcoverimage.webp"
+              src={book.fileUrl ? `${import.meta.env.VITE_API_URL}/uploads/${book.fileUrl}` : "https://via.placeholder.com/300x450?text=No+Cover"} 
               alt="Book Cover"
               className="w-full h-full object-cover"
             />
           </div>
         </div>
 
-        {/* --- ROW 1, COL 2: DETAILS CONTAINER --- */}
+        {/* DETAILS CONTAINER */}
         <div className="bg-white rounded-2xl shadow-xl p-6 md:p-8 flex flex-col h-full">
           <div className="mb-6">
             <span className="px-3 py-1 bg-indigo-50 text-indigo-700 text-xs font-bold rounded-md uppercase tracking-wide mb-3 inline-block">
@@ -290,7 +286,7 @@ const BookDetails = () => {
           </div>
         </div>
 
-        {/* --- ROW 2, COL 1: REVIEWS LIST --- */}
+        {/* REVIEWS LIST */}
         <div id="reviews-section" className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700 overflow-hidden">
           <div className="bg-gradient-to-r from-indigo-600 to-purple-600 p-6">
             <h3 className="text-xl font-bold text-white flex items-center gap-2">
@@ -326,7 +322,7 @@ const BookDetails = () => {
           </div>
         </div>
 
-        {/* --- ROW 2, COL 2: WRITE REVIEW (Sticky) --- */}
+        {/* WRITE REVIEW */}
         <div className="bg-white rounded-2xl shadow-xl p-6 md:p-8 h-fit sticky top-24">
           <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
             <MessageSquare className="w-5 h-5 text-indigo-600" /> Write a Review
