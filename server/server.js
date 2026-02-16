@@ -17,6 +17,7 @@ import path from 'path';
 import verifyToken from './middleware/verifyToken.js'; 
 import cookieParser from 'cookie-parser';
 
+
 // Load Config
 dotenv.config();
 connectDB();
@@ -31,6 +32,11 @@ const corsOptions = {
   credentials: true, 
   optionsSuccessStatus: 200,
 };
+
+app.get("/", (req, res) => {
+  res.send("Libro System API Running 🚀");
+});
+
 
 app.use(cors(corsOptions));
 app.use(express.json());
