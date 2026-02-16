@@ -1,0 +1,94 @@
+# =========================
+
+# Dependencies
+
+# =========================
+
+node_modules/
+**/node_modules/
+
+# =========================
+
+# Environment variables (VERY IMPORTANT)
+
+# =========================
+
+.env
+.env.*
+client/.env
+server/.env
+config.env
+
+# =========================
+
+# Build folders
+
+# =========================
+
+dist/
+build/
+client/dist/
+client/build/
+server/dist/
+
+# =========================
+
+# Logs
+
+# =========================
+
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# =========================
+
+# Uploads / user files
+
+# =========================
+
+uploads/
+public/uploads/
+*.pdf
+*.docx
+*.zip
+
+# =========================
+
+# OS & Editor files
+
+# =========================
+
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# =========================
+
+# Database / backups
+
+# =========================
+
+*.bak
+*.dump
+*.sqlite
+*.sqlite3
+
+# =========================
+
+# Testing / coverage
+
+# =========================
+
+coverage/
+
+# =========================
+
+# Vite cache
+
+# =========================
+
+.vite/

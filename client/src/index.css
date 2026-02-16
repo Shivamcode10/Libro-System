@@ -1,0 +1,115 @@
+@import 'leaflet/dist/leaflet.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* --- CRITICAL LAYOUT FIX --- */
+/* This ensures padding doesn't break the layout width on mobile */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+/* --- ROOT & BODY SETTINGS (Optimized for Mobile/Tablet) --- */
+html, body {
+  width: 100%;
+  overflow-x: hidden; /* Prevents horizontal scroll on small screens */
+  min-width: 320px;   /* Prevents layout from breaking on very small phones */
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+
+  /* MOBILE/TABLET OPTIMIZATIONS */
+  -webkit-text-size-adjust: 100%;       /* Prevents iOS from auto-zooming text */
+  -webkit-tap-highlight-color: transparent; /* Removes the blue box on tap (Android/iOS) */
+  min-height: 100vh;                    /* Ensures body takes full height on mobile browsers */
+}
+
+/* --- 1. ANIMATIONS --- */
+/* Standardized to kebab-case to match your React classes */
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slide-up {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes float {
+  0% { transform: translateY(0px); }
+  50% { transform: translateY(-15px); }
+  100% { transform: translateY(0px); }
+}
+
+@keyframes blob {
+  0% { border-radius: 33%; }
+  33% { border-radius: 66%; }
+  66% { border-radius: 33%; }
+  100% { border-radius: 50%; }
+}
+
+/* Classes matching your React App usage */
+.animate-fade-in {
+  animation: fade-in 0.4s ease-out;
+}
+
+.animate-slide-up {
+  animation: slideUp 0.3s ease-out;
+}
+
+.animate-float {
+  animation: float 4s ease-in-out infinite;
+  /* Hardware acceleration hint for smoother animation on mobile */
+  will-change: transform; 
+}
+
+/* --- 2. CUSTOM SCROLLBAR --- */
+/* Note: Mobile devices (iOS/Android) usually hide scrollbars automatically, 
+   so this primarily targets Laptop/Desktop and Tablets with visible scrollbars. */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(99, 102, 241, 0.3); /* Indigo tint */
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(99, 102, 241, 0.6);
+}
+
+/* --- 3. GLASSMORPHISM UTILITIES --- */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px); /* Required for Safari/iOS */
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+}
+
+/* Reduces blur on mobile for better performance */
+@media (max-width: 768px) {
+  .glass-panel {
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+  }
+}
+
+.dark .glass-panel {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
