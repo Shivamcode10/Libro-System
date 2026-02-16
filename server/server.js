@@ -13,6 +13,10 @@ import messageRoutes from "./routes/messageRoutes.js";
 import verifyToken from "./middleware/verifyToken.js";
 import cookieParser from "cookie-parser";
 import path from "path";
+import { fileURLToPath } from 'url';
+
+// ✅ IMPORT CLOUDINARY
+import { v2 as cloudinary } from 'cloudinary';
 
 // ==========================
 // CONFIG
@@ -22,14 +26,19 @@ connectDB();
 
 const app = express();
 
+// ✅ CONFIGURE CLOUDINARY
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET
+});
 
 // ==========================
-// 🌐 GLOBAL CORS HANDLER (FINAL FIX)
+// 🌐 GLOBAL CORS HANDLER
 // ==========================
 app.use((req, res, next) => {
   const origin = req.headers.origin;
 
-  // reflect requesting origin (required for cookies auth)
   if (origin) {
     res.setHeader("Access-Control-Allow-Origin", origin);
   }
@@ -45,14 +54,12 @@ app.use((req, res, next) => {
     "GET, POST, PUT, DELETE, PATCH, OPTIONS"
   );
 
-  // handle preflight request
   if (req.method === "OPTIONS") {
     return res.sendStatus(204);
   }
 
   next();
 });
-
 
 // ==========================
 // MIDDLEWARE
@@ -61,14 +68,12 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 
-
 // ==========================
 // ROOT ROUTE
 // ==========================
 app.get("/", (req, res) => {
-  res.send("Libro System API Running 🚀");
+  res.send("Libro System API Running 🚀 (Cloudinary Integrated)");
 });
-
 
 // ==========================
 // ROUTES
@@ -82,13 +87,15 @@ app.use("/api/messages", verifyToken, messageRoutes);
 app.use("/api/requests", verifyToken, requestRoutes);
 app.use("/api/reviews", reviewRoutes);
 
+// ==========================
+// STATIC FILES (Legacy Support)
+// ==========================
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
-// ==========================
-// STATIC FILES
-// ==========================
 app.use(
   "/uploads",
-  express.static(path.join(path.resolve(), "uploads"), {
+  express.static(path.join(__dirname, "uploads"), {
     setHeaders: (res, filePath) => {
       if (filePath.endsWith(".pdf")) {
         res.set("Content-Disposition", "attachment");
@@ -99,12 +106,10 @@ app.use(
   })
 );
 
-
 // ==========================
 // ERROR HANDLER
 // ==========================
 app.use(errorHandler);
-
 
 // ==========================
 // SERVER START

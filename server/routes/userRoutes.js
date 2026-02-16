@@ -1,8 +1,9 @@
 import express from 'express';
-import multer from 'multer';
 import bcrypt from 'bcryptjs';
-import path from 'path';
 import axios from 'axios'; 
+// ✅ UPDATED IMPORTS
+import { v2 as cloudinary } from 'cloudinary';
+import { CloudinaryStorage } from 'multer-storage-cloudinary';
 import User from '../models/userModel.js'; 
 import Issue from '../models/issueModel.js';
 import verifyToken from '../middleware/verifyToken.js';
@@ -14,16 +15,21 @@ const getUserId = (req) => {
     return req.user._id || req.user.id;
 };
 
-// Setup Multer
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, 'uploads/'); 
-  },
-  filename: function (req, file, cb) {
-    cb(null, 'avatar-' + Date.now() + path.extname(file.originalname));
+// ✅ SETUP CLOUDINARY STORAGE FOR AVATARS
+const avatarStorage = new CloudinaryStorage({
+  cloudinary: cloudinary,
+  params: {
+    folder: 'librosys/avatars',
+    allowed_formats: ['jpg', 'png', 'jpeg'],
+    public_id: (req, file) => {
+      // Use user ID to ensure one avatar per user (optional, or keep unique)
+      // Using timestamp to allow history if needed
+      return `avatar-${req.user.id}-${Date.now()}`;
+    }
   }
 });
-const upload = multer({ storage: storage });
+
+const upload = require('multer')({ storage: avatarStorage });
 
 // 1. GET PROFILE INFO
 router.get('/me', verifyToken, async (req, res) => {
@@ -45,7 +51,6 @@ router.put('/me', verifyToken, async (req, res) => {
     const { name, phone, address } = req.body;
     const updateData = { name, phone, address };
 
-    // --- GEOCODING LOGIC ---
     if (address && address !== 'Not added') {
       try {
         const response = await axios.get('https://nominatim.openstreetmap.org/search', {
@@ -107,7 +112,7 @@ router.put('/change-password', verifyToken, async (req, res) => {
   }
 });
 
-// 4. UPLOAD AVATAR (FIXED)
+// 4. UPLOAD AVATAR
 router.post('/upload-avatar', verifyToken, upload.single('avatar'), async (req, res) => {
   try {
     const userId = getUserId(req);
@@ -116,13 +121,14 @@ router.post('/upload-avatar', verifyToken, upload.single('avatar'), async (req, 
       return res.status(400).json({ message: "No file uploaded" });
     }
 
-    // ✅ FIXED: Save ONLY the filename to the DB, not the full localhost URL
-    const avatarFilename = req.file.filename; 
+    // ✅ Cloudinary returns the FULL URL in .path
+    const avatarUrl = req.file.path; 
     
-    const user = await User.findByIdAndUpdate(userId, { avatar: avatarFilename }, { new: true }).select('-password');
+    // Optional: Delete old avatar from Cloudinary if desired (requires extra logic to find old public_id)
     
-    // We return the filename here. The frontend will construct the full URL.
-    res.json({ message: "Avatar updated", avatarUrl: avatarFilename, user });
+    const user = await User.findByIdAndUpdate(userId, { avatar: avatarUrl }, { new: true }).select('-password');
+    
+    res.json({ message: "Avatar updated", avatarUrl, user });
   } catch (err) {
     console.error("Upload Avatar error:", err);
     res.status(500).json({ error: err.message });

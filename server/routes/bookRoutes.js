@@ -1,33 +1,26 @@
 import express from 'express';
-import multer from 'multer';
-import path from 'path';
-import fs from 'fs';
-import { createRequire } from 'module';
-const require = createRequire(import.meta.url);
-const pdfParse = require('pdf-parse');
+// ✅ UPDATED IMPORTS FOR CLOUDINARY
+import { v2 as cloudinary } from 'cloudinary';
+import { CloudinaryStorage } from 'multer-storage-cloudinary';
 import Book from '../models/bookModel.js';
 import { protect, admin } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
-// --- CONFIGURE MULTTER ---
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => { cb(null, 'uploads/'); },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, uniqueSuffix + path.extname(file.originalname));
-  }
+// ✅ SETUP CLOUDINARY STORAGE FOR BOOKS
+const storage = new CloudinaryStorage({
+  cloudinary: cloudinary,
+  params: {
+    folder: 'librosys/books',
+    allowed_formats: ['jpg', 'png', 'jpeg', 'pdf'],
+    public_id: (req, file) => {
+      // Custom naming: book-timestamp-random
+      return `book-${Date.now()}-${Math.round(Math.random() * 1E9)}`;
+    }
+  },
 });
 
-const fileFilter = (req, file, cb) => {
-  if (file.mimetype === 'image/jpeg' || file.mimetype === 'image/png' || file.mimetype === 'application/pdf') {
-    cb(null, true);
-  } else {
-    cb(new Error('Only images and PDFs are allowed!'), false);
-  }
-};
-
-const upload = multer({ storage: storage, fileFilter: fileFilter });
+const upload = require('multer')({ storage: storage });
 
 // 1. GET ALL BOOKS
 router.get('/', async (req, res) => {
@@ -39,10 +32,7 @@ router.get('/', async (req, res) => {
   }
 });
 
-// ==========================================
-// 2. CRITICAL: PROTECTED DOWNLOAD ROUTE
-// MUST BE BEFORE /:id
-// ==========================================
+// 2. DOWNLOAD ROUTE
 router.get('/:id/download', protect, async (req, res) => {
   try {
     const book = await Book.findById(req.params.id);
@@ -61,20 +51,16 @@ router.get('/:id/download', protect, async (req, res) => {
       return res.status(404).json({ message: 'File not available' });
     }
 
-    const filePath = path.join('uploads', book.fileUrl);
-    
-    if (fs.existsSync(filePath)) {
-      res.download(filePath, book.title + '.pdf'); 
-    } else {
-      res.status(404).json({ message: 'File missing on server' });
-    }
+    // ✅ REDIRECT TO CLOUDINARY URL (Fastest way for PDFs)
+    return res.redirect(book.fileUrl);
+
   } catch (error) {
     console.error("Download Error:", error);
     res.status(500).json({ message: 'Download failed' });
   }
 });
 
-// 3. GET SINGLE BOOK (Must come AFTER /:id/download)
+// 3. GET SINGLE BOOK
 router.get('/:id', async (req, res) => {
   try {
     const book = await Book.findById(req.params.id);
@@ -85,23 +71,15 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// 4. CREATE BOOK (Admin Only)
+// 4. CREATE BOOK
 router.post('/', protect, admin, upload.single('bookFile'), async (req, res) => {
   try {
     const { title, author, category, pages, description } = req.body;
     
+    // Note: Automatic PDF page counting is disabled for Cloudinary streams
+    // to avoid complexity. Use the 'pages' input field.
     let finalPages = parseInt(pages) || 0;
     let finalAuthor = author || "Unknown Author";
-
-    if (req.file && req.file.mimetype === 'application/pdf') {
-      try {
-        const dataBuffer = fs.readFileSync(req.file.path);
-        const data = await pdfParse(dataBuffer);
-        finalPages = data.numpages;
-      } catch (err) {
-        console.error("Error parsing PDF:", err);
-      }
-    }
 
     if (finalPages > 5000) {
       return res.status(400).json({ message: 'Book pages cannot exceed 5000.' });
@@ -114,7 +92,7 @@ router.post('/', protect, admin, upload.single('bookFile'), async (req, res) => 
       description: description || 'No description',
       status: 'Available',
       pages: finalPages,
-      fileUrl: req.file.filename,
+      fileUrl: req.file.path, // ✅ Cloudinary returns the FULL URL here
       issuedBy: null,
       addedBy: req.user._id
     });
@@ -125,7 +103,7 @@ router.post('/', protect, admin, upload.single('bookFile'), async (req, res) => 
   }
 });
 
-// 5. UPDATE BOOK (Admin Only)
+// 5. UPDATE BOOK
 router.put('/:id', protect, admin, async (req, res) => {
   try {
     const { title, author, category, description, pages, status } = req.body;
@@ -138,21 +116,32 @@ router.put('/:id', protect, admin, async (req, res) => {
   }
 });
 
-// 6. DELETE BOOK (Admin Only)
+// 6. DELETE BOOK
 router.delete('/:id', protect, admin, async (req, res) => {
   try {
     const book = await Book.findById(req.params.id);
     if (!book) return res.status(404).json({ message: 'Book not found' });
 
-    if (book.fileUrl) {
-      const filePath = path.join('uploads', book.fileUrl);
-      if (fs.existsSync(filePath)) {
-        fs.unlinkSync(filePath);
+    // ✅ DELETE FROM CLOUDINARY
+    if (book.fileUrl && book.fileUrl.includes('cloudinary')) {
+      try {
+        // Extract public_id from the Cloudinary URL
+        // URL format: .../v123456789/folder/public_id.ext
+        const urlParts = book.fileUrl.split('/');
+        const fileName = urlParts[urlParts.length - 1];
+        const publicId = fileName.split('.')[0];
+        
+        // We need to include the folder used in storage config
+        await cloudinary.uploader.destroy(`librosys/books/${publicId}`);
+        console.log(`Deleted from Cloudinary: librosys/books/${publicId}`);
+      } catch (cloudErr) {
+        console.error("Cloudinary delete error:", cloudErr);
+        // Continue to delete DB record even if cloud delete fails
       }
     }
 
     await Book.findByIdAndDelete(req.params.id);
-    res.json({ message: 'Book and associated file removed' });
+    res.json({ message: 'Book removed' });
   } catch (error) {
     res.status(500).json({ message: 'Failed to delete book' });
   }

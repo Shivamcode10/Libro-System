@@ -21,7 +21,6 @@ const BookDetails = () => {
   const [requestMsg, setRequestMsg] = useState('');
   const [showRequest, setShowRequest] = useState(false);
 
-  // MODAL STATE
   const [showEditModal, setShowEditModal] = useState(false);
   const [editForm, setEditForm] = useState({ title: '', author: '', category: '', description: '', status: 'Available' });
   const [userNotes, setUserNotes] = useState('');
@@ -29,30 +28,28 @@ const BookDetails = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
 
-  // ✅ ADD API BASE
   const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
-  // ✅ ADD SMART HELPER FUNCTION
+  // ✅ UPDATED HELPER FOR CLOUDINARY COMPATIBILITY
   const getBookCoverUrl = (fileUrl) => {
     if (!fileUrl) {
       return "https://via.placeholder.com/300x450?text=No+Cover";
     }
 
-    // 1. If it's a PDF, we cannot show it in an <img> tag. Return a generic placeholder.
-    if (fileUrl.toLowerCase().endsWith('.pdf')) {
-      return "https://via.placeholder.com/300x450/4F46E5/FFFFFF?text=PDF+Document";
+    // ✅ CHECK 1: If it starts with http, it's a Cloudinary URL. Use it directly!
+    if (fileUrl.startsWith('http')) {
+      return fileUrl; 
     }
 
-    // 2. If it contains localhost (Legacy Data), replace it with the live URL
+    // CHECK 2: Legacy Localhost Data
     if (fileUrl.includes('localhost')) {
       return fileUrl.replace('http://localhost:5000', API_BASE);
     }
 
-    // 3. If it's a relative filename (New Data), prepend the base URL
+    // CHECK 3: Legacy Local Data (just filename)
     return `${API_BASE}/uploads/${fileUrl}`;
   };
 
-  // SCROLL TO REVIEWS
   useEffect(() => {
     if (location.hash === '#reviews-section') {
       setTimeout(() => {
@@ -64,7 +61,6 @@ const BookDetails = () => {
     }
   }, [location.hash]);
 
-  // FETCH DATA
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -76,7 +72,6 @@ const BookDetails = () => {
         setBook(bookRes.data);
         setReviews(reviewRes.data);
 
-        // Pre-fill Edit Form
         setEditForm({
           title: bookRes.data.title,
           author: bookRes.data.author,
@@ -85,7 +80,6 @@ const BookDetails = () => {
           status: bookRes.data.status
         });
 
-        // Check Permissions
         const issuedBy = String(bookRes.data.issuedBy);
         const currentUserId = String(user?._id || user?.id);
 
@@ -107,8 +101,6 @@ const BookDetails = () => {
     };
     fetchData();
   }, [id, user]); 
-
-  // --- HANDLERS ---
 
   const toggleModal = () => {
     setShowEditModal(!showEditModal);
