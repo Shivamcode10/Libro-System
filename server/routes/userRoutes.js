@@ -1,7 +1,8 @@
 import express from 'express';
 import bcrypt from 'bcryptjs';
 import axios from 'axios'; 
-// ✅ UPDATED IMPORTS
+// ✅ IMPORT MULTER NORMALLY
+import multer from 'multer';
 import { v2 as cloudinary } from 'cloudinary';
 import { CloudinaryStorage } from 'multer-storage-cloudinary';
 import User from '../models/userModel.js'; 
@@ -22,14 +23,13 @@ const avatarStorage = new CloudinaryStorage({
     folder: 'librosys/avatars',
     allowed_formats: ['jpg', 'png', 'jpeg'],
     public_id: (req, file) => {
-      // Use user ID to ensure one avatar per user (optional, or keep unique)
-      // Using timestamp to allow history if needed
       return `avatar-${req.user.id}-${Date.now()}`;
     }
   }
 });
 
-const upload = require('multer')({ storage: avatarStorage });
+// ✅ INITIALIZE MULTER WITHOUT REQUIRE
+const upload = multer({ storage: avatarStorage });
 
 // 1. GET PROFILE INFO
 router.get('/me', verifyToken, async (req, res) => {
@@ -121,10 +121,7 @@ router.post('/upload-avatar', verifyToken, upload.single('avatar'), async (req, 
       return res.status(400).json({ message: "No file uploaded" });
     }
 
-    // ✅ Cloudinary returns the FULL URL in .path
     const avatarUrl = req.file.path; 
-    
-    // Optional: Delete old avatar from Cloudinary if desired (requires extra logic to find old public_id)
     
     const user = await User.findByIdAndUpdate(userId, { avatar: avatarUrl }, { new: true }).select('-password');
     
