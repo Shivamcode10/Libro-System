@@ -1,6 +1,5 @@
 import express from "express";
 import dotenv from "dotenv";
-import cors from "cors";
 import connectDB from "./config/db.js";
 import authRoutes from "./routes/authRoutes.js";
 import bookRoutes from "./routes/bookRoutes.js";
@@ -24,31 +23,38 @@ connectDB();
 const app = express();
 
 // ==========================
-// CORS FIX (IMPORTANT)
+// 🔥 PERFECT CORS HANDLER (RENDER + VERCEL)
 // ==========================
 const allowedOrigins = [
   "http://localhost:5173",
   process.env.CLIENT_URL
 ];
 
-app.use(cors({
-  origin: function (origin, callback) {
-    // allow requests with no origin (mobile apps, postman)
-    if (!origin) return callback(null, true);
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
 
-    if (allowedOrigins.includes(origin)) {
-      return callback(null, true);
-    } else {
-      return callback(new Error("CORS not allowed: " + origin));
-    }
-  },
-  credentials: true,
-  methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"]
-}));
+  // allow only defined origins
+  if (allowedOrigins.includes(origin)) {
+    res.header("Access-Control-Allow-Origin", origin);
+  }
 
-// Handle preflight requests
-app.options("*", cors());
+  res.header("Access-Control-Allow-Credentials", "true");
+  res.header(
+    "Access-Control-Allow-Headers",
+    "Origin, X-Requested-With, Content-Type, Accept, Authorization"
+  );
+  res.header(
+    "Access-Control-Allow-Methods",
+    "GET, POST, PUT, DELETE, PATCH, OPTIONS"
+  );
+
+  // handle browser preflight request
+  if (req.method === "OPTIONS") {
+    return res.sendStatus(200);
+  }
+
+  next();
+});
 
 // ==========================
 // MIDDLEWARE
@@ -79,15 +85,18 @@ app.use("/api/reviews", reviewRoutes);
 // ==========================
 // STATIC FILES
 // ==========================
-app.use("/uploads", express.static(path.join(path.resolve(), "uploads"), {
-  setHeaders: (res, filePath) => {
-    if (filePath.endsWith(".pdf")) {
-      res.set("Content-Disposition", "attachment");
-    } else {
-      res.set("Content-Disposition", "inline");
-    }
-  }
-}));
+app.use(
+  "/uploads",
+  express.static(path.join(path.resolve(), "uploads"), {
+    setHeaders: (res, filePath) => {
+      if (filePath.endsWith(".pdf")) {
+        res.set("Content-Disposition", "attachment");
+      } else {
+        res.set("Content-Disposition", "inline");
+      }
+    },
+  })
+);
 
 // ==========================
 // ERROR HANDLER
