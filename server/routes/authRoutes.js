@@ -10,7 +10,6 @@ const router = express.Router();
 
 // ==============================
 // REGISTER USER
-// POST /api/auth/register
 // ==============================
 router.post('/register', async (req, res) => {
   try {
@@ -25,11 +24,9 @@ router.post('/register', async (req, res) => {
       return res.status(400).json({ message: "User already exists" });
     }
 
-    // Hash Password
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
-    // First registered user becomes admin
     const userCount = await User.countDocuments({});
     const role = userCount === 0 ? 'admin' : 'user';
 
@@ -53,8 +50,7 @@ router.post('/register', async (req, res) => {
 
 
 // ==============================
-// LOGIN USER (COOKIE AUTH)
-// POST /api/auth/login
+// LOGIN USER
 // ==============================
 router.post('/login', async (req, res) => {
   try {
@@ -76,11 +72,15 @@ router.post('/login', async (req, res) => {
       { expiresIn: "30d" }
     );
 
-    // 🔐 Send token in secure cookie (REQUIRED FOR VERCEL + RENDER)
+    // ✅ DYNAMIC COOKIE CONFIGURATION
+    // In Production (HTTPS): secure=true, sameSite=none (Cross-Domain)
+    // In Development (HTTP): secure=false, sameSite=lax
+    const isProduction = process.env.NODE_ENV === 'production';
+
     res.cookie("token", token, {
       httpOnly: true,
-      secure: true,        // HTTPS only
-      sameSite: "none",    // allow cross-origin
+      secure: isProduction,      // TRUE for Render/Vercel, FALSE for Localhost
+      sameSite: isProduction ? 'none' : 'lax', // 'none' required for Cross-Domain
       maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days
     });
 

@@ -4,20 +4,36 @@ import User from '../models/userModel.js';
 // Protect Routes (Login Required)
 const protect = async (req, res, next) => {
   let token;
-  
-  if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
+
+  // 1. CHECK COOKIE (Primary for Vercel+Render)
+  if (req.cookies && req.cookies.token) {
+    token = req.cookies.token;
+  }
+
+  // 2. CHECK HEADER (Fallback for Postman/Dev)
+  if (!token && req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
     try {
       token = req.headers.authorization.split(' ')[1];
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      req.user = await User.findById(decoded.id).select('-password');
-      next();
     } catch (error) {
-      res.status(401).json({ message: 'Not authorized, token failed' });
+      console.log("Header Token Parse Error");
     }
   }
 
   if (!token) {
-    res.status(401).json({ message: 'Not authorized, no token' });
+    return res.status(401).json({ message: 'Not authorized, no token found' });
+  }
+
+  try {
+    // Verify Token
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    
+    // Attach user to request
+    req.user = await User.findById(decoded.id).select('-password');
+    
+    next();
+  } catch (error) {
+    console.error("Auth Error:", error.message);
+    res.status(401).json({ message: 'Not authorized, token failed' });
   }
 };
 
