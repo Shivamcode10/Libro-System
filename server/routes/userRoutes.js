@@ -2,7 +2,7 @@ import express from 'express';
 import multer from 'multer';
 import bcrypt from 'bcryptjs';
 import path from 'path';
-import axios from 'axios'; // <--- ADDED: Required for Geocoding
+import axios from 'axios'; 
 import User from '../models/userModel.js'; 
 import Issue from '../models/issueModel.js';
 import verifyToken from '../middleware/verifyToken.js';
@@ -10,7 +10,6 @@ import verifyToken from '../middleware/verifyToken.js';
 const router = express.Router();
 
 // --- HELPER FUNCTION ---
-// Get User ID safely regardless of whether token stores it in 'id' or '_id'
 const getUserId = (req) => {
     return req.user._id || req.user.id;
 };
@@ -27,14 +26,11 @@ const storage = multer.diskStorage({
 const upload = multer({ storage: storage });
 
 // 1. GET PROFILE INFO
-// Matches Frontend: api.get('/user/me')
 router.get('/me', verifyToken, async (req, res) => {
   try {
     const userId = getUserId(req);
-    
     const user = await User.findById(userId).select('-password');
     if (!user) return res.status(404).json({ message: "User not found" });
-    
     res.json(user);
   } catch (err) {
     console.error("GET /me error:", err);
@@ -42,19 +38,16 @@ router.get('/me', verifyToken, async (req, res) => {
   }
 });
 
-// 2. UPDATE PROFILE (UPDATED: With Geocoding)
+// 2. UPDATE PROFILE (With Geocoding)
 router.put('/me', verifyToken, async (req, res) => {
   try {
     const userId = getUserId(req);
     const { name, phone, address } = req.body;
-    
     const updateData = { name, phone, address };
 
-    // --- NEW: GEOCODING LOGIC ---
-    // Convert Address string to Latitude/Longitude automatically
+    // --- GEOCODING LOGIC ---
     if (address && address !== 'Not added') {
       try {
-        // Using OpenStreetMap (Nominatim) - Free
         const response = await axios.get('https://nominatim.openstreetmap.org/search', {
           params: { q: address, format: 'json', limit: 1 }
         });
@@ -65,7 +58,6 @@ router.put('/me', verifyToken, async (req, res) => {
         }
       } catch (geoError) {
         console.error("Geocoding failed:", geoError);
-        // We continue even if geocoding fails, just won't update map coords
       }
     }
 
@@ -73,7 +65,7 @@ router.put('/me', verifyToken, async (req, res) => {
       userId, 
       updateData, 
       { new: true, runValidators: true }
-    ).select('-password'); // Don't return password
+    ).select('-password');
 
     res.json(updatedUser);
   } catch (err) {
@@ -86,8 +78,7 @@ router.put('/me', verifyToken, async (req, res) => {
 router.put('/change-password', verifyToken, async (req, res) => {
   try {
     const userId = getUserId(req);
-    
-    const { current, new: newPassword } = req.body; // Match frontend payload
+    const { current, new: newPassword } = req.body;
 
     if (!current || !newPassword) {
         return res.status(400).json({ message: "Please provide current and new password" });
@@ -116,7 +107,7 @@ router.put('/change-password', verifyToken, async (req, res) => {
   }
 });
 
-// 4. UPLOAD AVATAR
+// 4. UPLOAD AVATAR (FIXED)
 router.post('/upload-avatar', verifyToken, upload.single('avatar'), async (req, res) => {
   try {
     const userId = getUserId(req);
@@ -125,10 +116,13 @@ router.post('/upload-avatar', verifyToken, upload.single('avatar'), async (req, 
       return res.status(400).json({ message: "No file uploaded" });
     }
 
-    const avatarUrl = `http://localhost:5000/uploads/${req.file.filename}`;
-    const user = await User.findByIdAndUpdate(userId, { avatar: avatarUrl }, { new: true }).select('-password');
+    // ✅ FIXED: Save ONLY the filename to the DB, not the full localhost URL
+    const avatarFilename = req.file.filename; 
     
-    res.json({ message: "Avatar updated", avatarUrl, user });
+    const user = await User.findByIdAndUpdate(userId, { avatar: avatarFilename }, { new: true }).select('-password');
+    
+    // We return the filename here. The frontend will construct the full URL.
+    res.json({ message: "Avatar updated", avatarUrl: avatarFilename, user });
   } catch (err) {
     console.error("Upload Avatar error:", err);
     res.status(500).json({ error: err.message });
@@ -161,13 +155,12 @@ router.get('/all', verifyToken, async (req, res) => {
   }
 });
 
-// --- NEW: COMMUNITY ROUTE ---
-// Gets all users except the current one for the Map/Community feature
+// 7. COMMUNITY ROUTE
 router.get('/community', verifyToken, async (req, res) => {
   try {
     const users = await User.find({ 
       _id: { $ne: getUserId(req) } 
-    }).select('name avatar address lat lng role'); // Select only necessary fields
+    }).select('name avatar address lat lng role');
     
     res.json(users);
   } catch (err) {
@@ -175,7 +168,7 @@ router.get('/community', verifyToken, async (req, res) => {
   }
 });
 
-// 7. ADMIN: DELETE USER
+// 8. ADMIN: DELETE USER
 router.delete('/delete/:id', verifyToken, async (req, res) => {
   try {
     if (req.user.role !== 'admin') {

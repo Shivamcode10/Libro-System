@@ -62,6 +62,7 @@ const Profile = () => {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
       
+      // ✅ Updated state with cache busting
       const updatedUser = { 
         ...data.user, 
         avatar: `${data.user.avatar}?t=${new Date().getTime()}` 
@@ -112,11 +113,20 @@ const Profile = () => {
       </div>
     );
 
-  // ✅ HELPER FUNCTION TO FIX AVATAR URL
+  // ✅ ROBUST HELPER FUNCTION TO FIX AVATAR URL
   const getAvatarUrl = (avatar) => {
     if (!avatar) return `https://ui-avatars.com/api/?name=${user?.name}&background=random`;
-    if (avatar.startsWith('http')) return avatar; // If it's already a full URL
-    return `${API_BASE}/uploads/${avatar}`; // Construct full URL
+    
+    // 1. If it's already a full valid URL (and NOT localhost), return it
+    if (avatar.startsWith('http') && !avatar.includes('localhost')) return avatar;
+
+    // 2. If it contains localhost (OLD DATA), REPLACE it with the live API URL
+    if (avatar.includes('localhost')) {
+      return avatar.replace('http://localhost:5000', API_BASE);
+    }
+
+    // 3. Otherwise, assume it's just a filename (NEW DATA) and prepend the API base
+    return `${API_BASE}/uploads/${avatar}`;
   };
 
   return (
