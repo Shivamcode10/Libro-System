@@ -5,6 +5,7 @@ import 'leaflet/dist/leaflet.css';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import api from '../services/api';
+import L from 'leaflet'; // Ensure L is imported for marker icons
 
 // Fix for default marker icons
 delete L.Icon.Default.prototype._getIconUrl;
@@ -17,6 +18,10 @@ L.Icon.Default.mergeOptions({
 const Community = () => {
   const { user } = useAuth();
   const { theme } = useTheme();
+  
+  // ✅ ADD API BASE URL
+  const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedUser, setSelectedUser] = useState(null);
@@ -25,6 +30,19 @@ const Community = () => {
   const [inputMessage, setInputMessage] = useState('');
   const [mapCenter, setMapCenter] = useState([20, 0]); 
   const [mapZoom, setMapZoom] = useState(2);
+
+  // ✅ ADD HELPER FUNCTION
+  const getAvatarUrl = (avatar) => {
+    if (!avatar) return null;
+    // If it's already a full valid URL (and NOT localhost), return it
+    if (avatar.startsWith('http') && !avatar.includes('localhost')) return avatar;
+    // If it contains localhost, REPLACE it
+    if (avatar.includes('localhost')) {
+      return avatar.replace('http://localhost:5000', API_BASE);
+    }
+    // Otherwise, assume it's just a filename
+    return `${API_BASE}/uploads/${avatar}`;
+  };
 
   // 1. FETCH USERS
   useEffect(() => {
@@ -104,7 +122,8 @@ const Community = () => {
               >
                 <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm shadow-md overflow-hidden shrink-0">
                   {u.avatar ? (
-                    <img src={u.avatar} alt="avatar" className="w-full h-full object-cover" />
+                    // ✅ FIXED: Use helper function
+                    <img src={getAvatarUrl(u.avatar)} alt="avatar" className="w-full h-full object-cover" />
                   ) : (
                     <span>{u.name.charAt(0).toUpperCase()}</span>
                   )}
@@ -170,7 +189,8 @@ const Community = () => {
               <div className="relative">
                  <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center font-bold text-sm overflow-hidden border-2 border-white/30">
                     {selectedUser.avatar ? (
-                      <img src={selectedUser.avatar} alt="avatar" className="w-full h-full object-cover" />
+                       // ✅ FIXED: Use helper function
+                      <img src={getAvatarUrl(selectedUser.avatar)} alt="avatar" className="w-full h-full object-cover" />
                     ) : (
                       <span>{selectedUser.name.charAt(0)}</span>
                     )}
@@ -203,7 +223,8 @@ const Community = () => {
                   {!isMe && (
                     <div className="w-8 h-8 rounded-full bg-gray-300 dark:bg-gray-600 flex-shrink-0 overflow-hidden mb-1">
                        {senderAvatar ? (
-                          <img src={senderAvatar} alt="avatar" className="w-full h-full object-cover" />
+                          // ✅ FIXED: Use helper function
+                          <img src={getAvatarUrl(senderAvatar)} alt="avatar" className="w-full h-full object-cover" />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center text-xs font-bold text-gray-600">
                             {senderName.charAt(0)}
@@ -268,4 +289,4 @@ const ChangeView = ({ center, zoom }) => {
   return null;
 };
 
-export default Community; 
+export default Community;
