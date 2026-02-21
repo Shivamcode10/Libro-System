@@ -7,9 +7,10 @@ import { protect, admin } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
-// ✅ BULLETPROOF STORAGE CONFIGURATION
+// ✅ FIXED STORAGE CONFIGURATION
 const storage = new CloudinaryStorage({
   cloudinary: cloudinary,
+  upload_preset: 'unsigned', // ✅ CRITICAL FIX: Forces use of the Public Preset
   params: async (req, file) => {
     // Detect file type
     if (file.mimetype === 'application/pdf') {
