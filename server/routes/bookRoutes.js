@@ -7,30 +7,18 @@ import { protect, admin } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
-// ✅ FIXED STORAGE CONFIGURATION
+// ✅ UPDATED CLOUDINARY STORAGE FOR BOOKS
 const storage = new CloudinaryStorage({
   cloudinary: cloudinary,
-  upload_preset: 'unsigned', // ✅ CRITICAL FIX: Forces use of the Public Preset
-  params: async (req, file) => {
-    // Detect file type
-    if (file.mimetype === 'application/pdf') {
-      // It's a PDF: Use 'raw' resource type
-      return {
-        folder: 'librosys/books',
-        format: 'pdf',
-        resource_type: 'raw', // ✅ FORCE RAW
-        public_id: `book-${Date.now()}-${Math.round(Math.random() * 1E9)}`
-      };
-    } else {
-      // It's an Image: Use 'image' resource type
-      return {
-        folder: 'librosys/books',
-        allowed_formats: ['jpg', 'png', 'jpeg'],
-        resource_type: 'image', // ✅ FORCE IMAGE
-        public_id: `book-${Date.now()}-${Math.round(Math.random() * 1E9)}`
-      };
+  params: {
+    folder: 'librosys/books',
+    // ✅ FIX 1: Use 'auto' so PDFs go to 'raw' (downloadable) and images go to 'image'
+    resource_type: 'auto', 
+    allowed_formats: ['jpg', 'png', 'jpeg', 'pdf'],
+    public_id: (req, file) => {
+      return `book-${Date.now()}-${Math.round(Math.random() * 1E9)}`;
     }
-  }
+  },
 });
 
 const upload = multer({ storage: storage });
