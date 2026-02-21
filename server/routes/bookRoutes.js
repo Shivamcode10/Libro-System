@@ -7,18 +7,30 @@ import { protect, admin } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
-// ✅ UPDATED CLOUDINARY STORAGE FOR BOOKS
+// ✅ CORRECTED STORAGE CONFIGURATION
 const storage = new CloudinaryStorage({
   cloudinary: cloudinary,
-  params: {
-    folder: 'librosys/books',
-    // ✅ FIX 1: Use 'auto' so PDFs go to 'raw' (downloadable) and images go to 'image'
-    resource_type: 'auto', 
-    allowed_formats: ['jpg', 'png', 'jpeg', 'pdf'],
-    public_id: (req, file) => {
-      return `book-${Date.now()}-${Math.round(Math.random() * 1E9)}`;
+  upload_preset: 'unsigned', // ✅ CRITICAL: This line fixes the 401 error
+  params: async (req, file) => {
+    // ✅ CORRECTED: Explicitly check file type
+    if (file.mimetype === 'application/pdf') {
+      // It's a PDF: Force 'raw' resource type
+      return {
+        folder: 'librosys/books',
+        format: 'pdf',
+        resource_type: 'raw', 
+        public_id: `book-${Date.now()}-${Math.round(Math.random() * 1E9)}`
+      };
+    } else {
+      // It's an Image: Force 'image' resource type
+      return {
+        folder: 'librosys/books',
+        allowed_formats: ['jpg', 'png', 'jpeg'],
+        resource_type: 'image',
+        public_id: `book-${Date.now()}-${Math.round(Math.random() * 1E9)}`
+      };
     }
-  },
+  }
 });
 
 const upload = multer({ storage: storage });
