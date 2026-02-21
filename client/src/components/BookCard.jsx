@@ -5,7 +5,7 @@ import { Link } from 'react-router-dom';
 import { useTheme } from '../context/ThemeContext';
 import api from '../services/api';
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000'; // Fallback added
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 const BookCard = ({ book, onEdit, onDelete, userId, onRead }) => {
   const { theme } = useTheme();
@@ -14,7 +14,7 @@ const BookCard = ({ book, onEdit, onDelete, userId, onRead }) => {
   const isAvailable = book.status === 'Available';
   const isIssuedToMe = !isAvailable && (String(userId) === String(book.issuedBy));
 
-  // --- UPDATED THEME VARIABLES FOR BETTER CONTRAST ---
+  // --- UPDATED THEME VARIABLES ---
   const cardBg = theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-100';
   const textMain = theme === 'dark' ? 'text-white' : 'text-gray-900';
   const textSub = theme === 'dark' ? 'text-gray-300' : 'text-gray-500';
@@ -24,14 +24,23 @@ const BookCard = ({ book, onEdit, onDelete, userId, onRead }) => {
     setNumPages(numPages);
   };
 
+  // ✅ NEW HELPER FUNCTION TO FIX URLS
+  const getFileUrl = (fileUrl) => {
+    if (!fileUrl) return null;
+    // 1. If it's already a full URL (Cloudinary), use it directly!
+    if (fileUrl.startsWith('http')) return fileUrl;
+    // 2. Otherwise, it's legacy data (filename), so construct local path
+    return `${API_BASE}/uploads/${fileUrl}`;
+  };
+
   let renderContent;
 
   if (book.fileUrl) {
     if (book.fileUrl.match(/\.(jpeg|jpg|png|gif)$/i)) {
       renderContent = (
         <img 
-          // ✅ FIXED: Using dynamic API URL
-          src={`${API_BASE}/uploads/${book.fileUrl}`} 
+          // ✅ FIXED: Use helper function
+          src={getFileUrl(book.fileUrl)} 
           alt={book.title} 
           className="w-full h-full object-cover transition-transform duration-300 ease-out group-hover:scale-105"
           loading="lazy"
@@ -42,8 +51,8 @@ const BookCard = ({ book, onEdit, onDelete, userId, onRead }) => {
       renderContent = (
         <div className="w-full h-full flex items-center justify-center relative overflow-hidden bg-white">
            <Document
-             // ✅ FIXED: Using dynamic API URL
-             file={`${API_BASE}/uploads/${book.fileUrl}`}
+             // ✅ FIXED: Use helper function
+             file={getFileUrl(book.fileUrl)}
              loading={<div className={`animate-pulse w-full h-full ${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-200'}`} />}
              error={<div className="text-red-400 text-xs text-center p-4">Preview Error</div>}
              onLoadSuccess={onDocumentLoadSuccess}
