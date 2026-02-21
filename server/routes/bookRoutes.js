@@ -1,5 +1,4 @@
 import express from 'express';
-// ✅ IMPORT MULTER NORMALLY
 import multer from 'multer';
 import { v2 as cloudinary } from 'cloudinary';
 import { CloudinaryStorage } from 'multer-storage-cloudinary';
@@ -8,11 +7,13 @@ import { protect, admin } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
-// ✅ SETUP CLOUDINARY STORAGE FOR BOOKS
+// ✅ UPDATED CLOUDINARY STORAGE FOR BOOKS
 const storage = new CloudinaryStorage({
   cloudinary: cloudinary,
   params: {
     folder: 'librosys/books',
+    // ✅ FIX 1: Use 'auto' so PDFs go to 'raw' (downloadable) and images go to 'image'
+    resource_type: 'auto', 
     allowed_formats: ['jpg', 'png', 'jpeg', 'pdf'],
     public_id: (req, file) => {
       return `book-${Date.now()}-${Math.round(Math.random() * 1E9)}`;
@@ -20,7 +21,6 @@ const storage = new CloudinaryStorage({
   },
 });
 
-// ✅ INITIALIZE MULTER WITHOUT REQUIRE
 const upload = multer({ storage: storage });
 
 // 1. GET ALL BOOKS
