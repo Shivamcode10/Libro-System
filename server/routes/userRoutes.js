@@ -1,7 +1,6 @@
 import express from 'express';
 import bcrypt from 'bcryptjs';
 import axios from 'axios'; 
-// ✅ IMPORT MULTER NORMALLY
 import multer from 'multer';
 import { v2 as cloudinary } from 'cloudinary';
 import { CloudinaryStorage } from 'multer-storage-cloudinary';
@@ -19,8 +18,10 @@ const getUserId = (req) => {
 // ✅ SETUP CLOUDINARY STORAGE FOR AVATARS
 const avatarStorage = new CloudinaryStorage({
   cloudinary: cloudinary,
+  upload_preset: 'unsigned', // ✅ FIX: Use the unsigned preset
   params: {
     folder: 'librosys/avatars',
+    resource_type: 'image', // ✅ Force image resource type
     allowed_formats: ['jpg', 'png', 'jpeg'],
     public_id: (req, file) => {
       return `avatar-${req.user.id}-${Date.now()}`;
@@ -28,7 +29,6 @@ const avatarStorage = new CloudinaryStorage({
   }
 });
 
-// ✅ INITIALIZE MULTER WITHOUT REQUIRE
 const upload = multer({ storage: avatarStorage });
 
 // 1. GET PROFILE INFO
