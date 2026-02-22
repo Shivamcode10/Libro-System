@@ -7,27 +7,27 @@ import { protect, admin } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
-// ✅ CORRECTED STORAGE CONFIGURATION
+// ✅ THE FIX: Robust Storage Configuration
 const storage = new CloudinaryStorage({
   cloudinary: cloudinary,
-  upload_preset: 'unsigned', // ✅ CRITICAL: This line fixes the 401 error
   params: async (req, file) => {
-    // ✅ CORRECTED: Explicitly check file type
+    // We use a function to decide settings based on the file type
     if (file.mimetype === 'application/pdf') {
-      // It's a PDF: Force 'raw' resource type
+      // SETTINGS FOR PDF
       return {
         folder: 'librosys/books',
-        format: 'pdf',
-        resource_type: 'raw', 
-        public_id: `book-${Date.now()}-${Math.round(Math.random() * 1E9)}`
+        resource_type: 'raw', // CRITICAL: Treats it as a file, not an image
+        upload_preset: 'unsigned',
+        public_id: `book-${Date.now()}-${Math.round(Math.random() * 1E9)}`,
       };
     } else {
-      // It's an Image: Force 'image' resource type
+      // SETTINGS FOR IMAGES
       return {
         folder: 'librosys/books',
-        allowed_formats: ['jpg', 'png', 'jpeg'],
-        resource_type: 'image',
-        public_id: `book-${Date.now()}-${Math.round(Math.random() * 1E9)}`
+        resource_type: 'image', // CRITICAL: Treats it as an image
+        allowed_formats: ['jpg', 'png', 'jpeg'], // Only allow these formats
+        upload_preset: 'unsigned',
+        public_id: `book-${Date.now()}-${Math.round(Math.random() * 1E9)}`,
       };
     }
   }
@@ -55,7 +55,6 @@ router.get('/:id/download', protect, async (req, res) => {
     }
 
     if (String(book.issuedBy) !== String(req.user._id)) {
-      console.log("Unauthorized download attempt by user:", req.user.name);
       return res.status(403).json({ message: 'Forbidden: You do not have permission to download this book.' });
     }
 
@@ -85,14 +84,18 @@ router.get('/:id', async (req, res) => {
 // 4. CREATE BOOK
 router.post('/', protect, admin, upload.single('bookFile'), async (req, res) => {
   try {
+    // DEBUG: Check if file is received
+    if (!req.file) {
+      console.error("❌ Upload Failed: No file received by server.");
+      return res.status(400).json({ message: 'No file uploaded. Check Cloudinary configuration.' });
+    }
+
+    console.log("✅ File uploaded to Cloudinary:", req.file.path);
+
     const { title, author, category, pages, description } = req.body;
     
     let finalPages = parseInt(pages) || 0;
     let finalAuthor = author || "Unknown Author";
-
-    if (finalPages > 5000) {
-      return res.status(400).json({ message: 'Book pages cannot exceed 5000.' });
-    }
 
     const book = await Book.create({
       title,
@@ -101,13 +104,14 @@ router.post('/', protect, admin, upload.single('bookFile'), async (req, res) => 
       description: description || 'No description',
       status: 'Available',
       pages: finalPages,
-      fileUrl: req.file.path, 
+      fileUrl: req.file.path, // Cloudinary URL
       issuedBy: null,
       addedBy: req.user._id
     });
+    
     res.status(201).json(book);
   } catch (error) {
-    console.error("Create Book Error:", error);
+    console.error("❌ Create Book Error:", error);
     res.status(500).json({ message: error.message });
   }
 });
@@ -133,9 +137,11 @@ router.delete('/:id', protect, admin, async (req, res) => {
 
     if (book.fileUrl && book.fileUrl.includes('cloudinary')) {
       try {
+        // Extract public_id from URL to delete from Cloudinary
+        // URL format: .../v1234567890/folder/public_id.ext
         const urlParts = book.fileUrl.split('/');
-        const fileName = urlParts[urlParts.length - 1];
-        const publicId = fileName.split('.')[0];
+        const fileName = urlParts[urlParts.length - 1]; // public_id.ext
+        const publicId = fileName.split('.')[0]; // public_id
         
         await cloudinary.uploader.destroy(`librosys/books/${publicId}`);
         console.log(`Deleted from Cloudinary: librosys/books/${publicId}`);
