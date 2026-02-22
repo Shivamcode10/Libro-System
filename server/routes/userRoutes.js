@@ -15,17 +15,16 @@ const getUserId = (req) => {
     return req.user._id || req.user.id;
 };
 
-// ✅ FIXED CLOUDINARY STORAGE
+// ✅ FIXED CLOUDINARY STORAGE FOR AVATARS
 const avatarStorage = new CloudinaryStorage({
   cloudinary: cloudinary,
-  upload_preset: 'unsigned', // Must match Cloudinary Dashboard exactly
+  upload_preset: 'unsigned', // ⚠️ Make sure this exact name exists in Cloudinary Dashboard
   params: {
     folder: 'librosys/avatars',
     resource_type: 'image',
     allowed_formats: ['jpg', 'png', 'jpeg'],
     public_id: (req, file) => {
       // ✅ SAFETY FIX: Check if req.user exists to prevent crash
-      // If req.user is missing, use 'unknown' instead of crashing
       const userId = req.user && req.user.id ? req.user.id : 'unknown';
       return `avatar-${userId}-${Date.now()}`;
     }
@@ -115,19 +114,23 @@ router.put('/change-password', verifyToken, async (req, res) => {
   }
 });
 
-// 4. UPLOAD AVATAR
+// 4. UPLOAD AVATAR (WITH DEBUGGING LOGS)
 router.post('/upload-avatar', verifyToken, upload.single('avatar'), async (req, res) => {
   try {
+    // ✅ DEBUGGING BLOCK: This will tell us why it crashes
+    console.log("=== CLOUDINARY DEBUG ===");
+    console.log("Cloud Name:", process.env.CLOUDINARY_CLOUD_NAME ? "FOUND" : "MISSING");
+    console.log("API Key:", process.env.CLOUDINARY_API_KEY ? "FOUND" : "MISSING");
+    console.log("API Secret:", process.env.CLOUDINARY_API_SECRET ? "FOUND" : "MISSING");
+    console.log("======================");
+
     const userId = getUserId(req);
     
     if (!req.file) {
       return res.status(400).json({ message: "No file uploaded" });
     }
 
-    // ✅ ADDED LOGGING TO DEBUG
-    console.log("File received:", req.file);
-    console.log("User ID:", userId);
-
+    console.log("File received:", req.file.filename);
     const avatarUrl = req.file.path; 
     
     const user = await User.findByIdAndUpdate(userId, { avatar: avatarUrl }, { new: true }).select('-password');
