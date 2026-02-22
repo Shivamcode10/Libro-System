@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { Book as BookIcon, Download, Eye, Edit, Trash2, MessageSquare } from 'lucide-react';
-import { Document, Page } from 'react-pdf';
+import { Book as BookIcon, Download, Eye, Edit, Trash2, MessageSquare, FileText } from 'lucide-react';
+// ✅ REMOVED: react-pdf imports (We don't use them in the list view anymore to prevent crashes)
 import { Link } from 'react-router-dom';
 import { useTheme } from '../context/ThemeContext';
 import api from '../services/api';
@@ -9,67 +9,59 @@ const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 const BookCard = ({ book, onEdit, onDelete, userId, onRead }) => {
   const { theme } = useTheme();
-  const [numPages, setNumPages] = useState(null); 
   
   const isAvailable = book.status === 'Available';
   const isIssuedToMe = !isAvailable && (String(userId) === String(book.issuedBy));
 
-  // --- UPDATED THEME VARIABLES ---
+  // --- THEME VARIABLES ---
   const cardBg = theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-100';
   const textMain = theme === 'dark' ? 'text-white' : 'text-gray-900';
   const textSub = theme === 'dark' ? 'text-gray-300' : 'text-gray-500';
   const imgBg = theme === 'dark' ? 'bg-gray-900' : 'bg-gray-50';
 
-  const onDocumentLoadSuccess = ({ numPages }) => {
-    setNumPages(numPages);
-  };
-
-  // ✅ NEW HELPER FUNCTION TO FIX URLS
+  // ✅ HELPER FUNCTION
   const getFileUrl = (fileUrl) => {
     if (!fileUrl) return null;
-    // 1. If it's already a full URL (Cloudinary), use it directly!
     if (fileUrl.startsWith('http')) return fileUrl;
-    // 2. Otherwise, it's legacy data (filename), so construct local path
     return `${API_BASE}/uploads/${fileUrl}`;
   };
 
+  // ✅ IMPROVED: Simple Logic to decide what to show in the card
+  // This prevents the 401 error and browser crashes
   let renderContent;
 
   if (book.fileUrl) {
-    if (book.fileUrl.match(/\.(jpeg|jpg|png|gif)$/i)) {
+    const isPdf = book.fileUrl.toLowerCase().endsWith('.pdf');
+    const url = getFileUrl(book.fileUrl);
+
+    if (isPdf) {
+      // If it's a PDF, show a nice Icon instead of trying to render the actual PDF
+      renderContent = (
+        <div className={`w-full h-full flex flex-col items-center justify-center ${theme === 'dark' ? 'bg-red-900/20' : 'bg-red-50'}`}>
+           <FileText className="w-16 h-16 text-red-500 mb-2" />
+           <span className="text-xs font-bold text-red-500">PDF Document</span>
+           <span className="text-[10px] text-gray-400 mt-1">Click details to read</span>
+        </div>
+      );
+    } else {
+      // If it's an image, show the image
       renderContent = (
         <img 
-          // ✅ FIXED: Use helper function
-          src={getFileUrl(book.fileUrl)} 
+          src={url} 
           alt={book.title} 
           className="w-full h-full object-cover transition-transform duration-300 ease-out group-hover:scale-105"
           loading="lazy"
+          onError={(e) => {
+            // Fallback if image URL is broken (401 or 404)
+            e.target.style.display = 'none';
+            e.target.nextSibling.style.display = 'flex';
+          }}
         />
-      );
-    } 
-    else if (book.fileUrl.match(/\.pdf$/i)) {
-      renderContent = (
-        <div className="w-full h-full flex items-center justify-center relative overflow-hidden bg-white">
-           <Document
-             // ✅ FIXED: Use helper function
-             file={getFileUrl(book.fileUrl)}
-             loading={<div className={`animate-pulse w-full h-full ${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-200'}`} />}
-             error={<div className="text-red-400 text-xs text-center p-4">Preview Error</div>}
-             onLoadSuccess={onDocumentLoadSuccess}
-           >
-             <Page 
-                pageNumber={1} 
-                height={256} 
-                className="shadow-md transition-transform duration-300 group-hover:scale-105"
-                renderTextLayer={false} 
-                renderAnnotationLayer={false}
-             />
-           </Document>
-        </div>
       );
     }
   }
 
+  // Fallback if no file URL
   if (!renderContent) {
     renderContent = (
       <div className={`flex flex-col items-center opacity-20 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-400'}`}>
@@ -78,6 +70,14 @@ const BookCard = ({ book, onEdit, onDelete, userId, onRead }) => {
       </div>
     );
   }
+
+  // Hidden error container (triggered by img onError)
+  const renderError = (
+     <div className="hidden absolute inset-0 flex flex-col items-center justify-center bg-gray-100 dark:bg-gray-800">
+        <BookIcon className="w-12 h-12 text-gray-400" />
+        <span className="text-xs text-gray-500">Error Loading</span>
+     </div>
+  );
 
   const handleCardDownload = async (e) => {
     e.preventDefault();
@@ -91,7 +91,8 @@ const BookCard = ({ book, onEdit, onDelete, userId, onRead }) => {
       link.click();
       link.parentNode.removeChild(link);
     } catch (error) {
-      alert("Permission denied");
+      console.error(error);
+      alert("Permission denied or file not found.");
     }
   };
 
@@ -109,6 +110,8 @@ const BookCard = ({ book, onEdit, onDelete, userId, onRead }) => {
       
       <div className={`h-64 flex items-center justify-center text-gray-400 relative overflow-hidden ${imgBg}`}>
         {renderContent}
+        {renderError} {/* Hidden fallback for broken images */}
+        
         <div className="absolute top-3 left-3 z-10">
            <span className={`px-2 py-1 text-[10px] font-bold uppercase tracking-wider rounded-md shadow-sm backdrop-blur-md ${
              isAvailable 
