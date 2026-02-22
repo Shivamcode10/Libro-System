@@ -15,16 +15,19 @@ const getUserId = (req) => {
     return req.user._id || req.user.id;
 };
 
-// ✅ SETUP CLOUDINARY STORAGE FOR AVATARS
+// ✅ FIXED CLOUDINARY STORAGE
 const avatarStorage = new CloudinaryStorage({
   cloudinary: cloudinary,
-  upload_preset: 'unsigned', // ✅ FIX: Use the unsigned preset
+  upload_preset: 'unsigned', // Must match Cloudinary Dashboard exactly
   params: {
     folder: 'librosys/avatars',
-    resource_type: 'image', // ✅ Force image resource type
+    resource_type: 'image',
     allowed_formats: ['jpg', 'png', 'jpeg'],
     public_id: (req, file) => {
-      return `avatar-${req.user.id}-${Date.now()}`;
+      // ✅ SAFETY FIX: Check if req.user exists to prevent crash
+      // If req.user is missing, use 'unknown' instead of crashing
+      const userId = req.user && req.user.id ? req.user.id : 'unknown';
+      return `avatar-${userId}-${Date.now()}`;
     }
   }
 });
@@ -121,6 +124,10 @@ router.post('/upload-avatar', verifyToken, upload.single('avatar'), async (req, 
       return res.status(400).json({ message: "No file uploaded" });
     }
 
+    // ✅ ADDED LOGGING TO DEBUG
+    console.log("File received:", req.file);
+    console.log("User ID:", userId);
+
     const avatarUrl = req.file.path; 
     
     const user = await User.findByIdAndUpdate(userId, { avatar: avatarUrl }, { new: true }).select('-password');
@@ -128,6 +135,7 @@ router.post('/upload-avatar', verifyToken, upload.single('avatar'), async (req, 
     res.json({ message: "Avatar updated", avatarUrl, user });
   } catch (err) {
     console.error("Upload Avatar error:", err);
+    // Return the actual error message to frontend so we can see it
     res.status(500).json({ error: err.message });
   }
 });
