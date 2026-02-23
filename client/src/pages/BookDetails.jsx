@@ -7,6 +7,7 @@ import {
   ArrowLeft, Book, User as UserIcon, Download, Edit, Trash2, 
   Star, Send, Clock, RotateCcw, X, Save, MessageSquare, FileText 
 } from 'lucide-react';
+import bookCoverImage from '../assets/images/bookcoverimage.webp';
 
 const BookDetails = () => {
   const { id } = useParams();
@@ -258,18 +259,17 @@ const BookDetails = () => {
               {book.status}
             </span>
           </div>
-          <div className="relative w-64 md:w-80 h-96 shadow-2xl rounded-lg overflow-hidden transform hover:scale-105 transition-transform duration-300">
-            {/* ✅ UPDATED: Using helper that handles PDFs safely */}
-            <img
-              src={getBookCoverUrl(book.fileUrl)} 
-              alt="Book Cover"
-              className="w-full h-full object-cover"
-              onError={(e) => {
-                e.target.onerror = null; 
-                e.target.src = "https://via.placeholder.com/300x450?text=Error+Loading+Image";
-              }}
-            />
-          </div>
+         <div className="relative w-64 md:w-80 h-96 shadow-2xl rounded-lg overflow-hidden transform hover:scale-105 transition-transform duration-300">
+  <img
+    src={getBookCoverUrl(book.fileUrl)} 
+    alt="Book Cover"
+    className="w-full h-full object-cover"
+    onError={(e) => {
+      e.target.onerror = null; 
+      e.target.src = bookCoverImage;
+    }}
+  />
+</div>
         </div>
 
         {/* DETAILS CONTAINER */}
