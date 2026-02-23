@@ -30,28 +30,25 @@ const BookDetails = () => {
 
   const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
-  // ✅ HELPER FUNCTION TO GET COVER IMAGE
+  // ✅ Helper to get Cover Image ONLY
   const getBookCoverUrl = (fileUrl) => {
     if (!fileUrl) {
       return "https://via.placeholder.com/300x450?text=No+Cover";
     }
 
-    // 1. If it's a PDF, return a placeholder icon immediately
+    // If it's a PDF, return a placeholder icon immediately
     if (fileUrl.toLowerCase().endsWith('.pdf')) {
       return "https://via.placeholder.com/300x450/4F46E5/FFFFFF?text=PDF+Document";
     }
 
-    // 2. Cloudinary or External URL
     if (fileUrl.startsWith('http')) {
       return fileUrl; 
     }
 
-    // 3. Legacy Localhost Data
     if (fileUrl.includes('localhost')) {
       return fileUrl.replace('http://localhost:5000', API_BASE);
     }
 
-    // 4. Legacy Local Data
     return `${API_BASE}/uploads/${fileUrl}`;
   };
 
@@ -258,8 +255,8 @@ const BookDetails = () => {
               <>
                 {isIssuedByUser ? (
                   <div className="flex flex-col gap-3">
-                    {/* ✅ UPDATED: PDF PREVIEW ICON SECTION */}
-                    <div className="bg-gray-50 border border-gray-200 rounded-xl p-6 flex flex-col items-center justify-center text-center">
+                    {/* ✅ PDF ICON CARD */}
+                    <div className="bg-gray-50 border border-gray-200 rounded-xl p-6 flex flex flex-col items-center justify-center text-center">
                         <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-3">
                            <FileText className="w-8 h-8 text-red-600" />
                         </div>
@@ -273,12 +270,6 @@ const BookDetails = () => {
                         >
                             <Download className="w-4 h-4" /> Download PDF
                         </button>
-                    </div>
-
-                    <div className="flex gap-3">
-                      <button onClick={handleReturn} className="flex-1 bg-orange-500 text-white py-3 rounded-lg font-semibold hover:bg-orange-600 transition shadow-lg flex justify-center items-center gap-2">
-                        <RotateCcw className="w-5 h-5" /> Return
-                      </button>
                     </div>
                   </div>
                 ) : (
