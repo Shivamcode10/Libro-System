@@ -16,6 +16,10 @@ const BookDetails = () => {
   const [isIssuedByUser, setIsIssuedByUser] = useState(false);
   const [error, setError] = useState(null);
   
+  // NEW: State for the secure PDF Blob URL
+  const [pdfBlobUrl, setPdfBlobUrl] = useState(null);
+  const [loadingPdf, setLoadingPdf] = useState(false);
+
   const [reviews, setReviews] = useState([]);
   const [newReview, setNewReview] = useState({ rating: 5, comment: '' });
   const [requestMsg, setRequestMsg] = useState('');
@@ -30,26 +34,52 @@ const BookDetails = () => {
 
   const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
-  // ✅ Helper to get Cover Image ONLY
+  // ✅ FIXED: Helper to get Cover Image ONLY
   const getBookCoverUrl = (fileUrl) => {
     if (!fileUrl) {
       return "https://via.placeholder.com/300x450?text=No+Cover";
     }
 
-    // If it's a PDF, return a placeholder icon immediately
+    // ✅ CHECK 1: If it's a PDF, return a placeholder icon immediately
+    // This fixes the "Preview Error" and JpxImage errors in the image view.
     if (fileUrl.toLowerCase().endsWith('.pdf')) {
-      return "https://via.placeholder.com/300x450/4F46E5/FFFFFF?text=PDF+Document";
+      return "https://via.placeholder.com/300x450?text=PDF+Document&bg=eee&color=333";
     }
 
+    // ✅ CHECK 2: Cloudinary or External URL
     if (fileUrl.startsWith('http')) {
       return fileUrl; 
     }
 
+    // CHECK 3: Legacy Localhost Data
     if (fileUrl.includes('localhost')) {
       return fileUrl.replace('http://localhost:5000', API_BASE);
     }
 
+    // CHECK 4: Legacy Local Data
     return `${API_BASE}/uploads/${fileUrl}`;
+  };
+
+  // ✅ NEW: Function to fetch PDF securely (Solves 401 Error)
+  const fetchSecurePdf = async () => {
+    if (!book?.fileUrl) return;
+    
+    setLoadingPdf(true);
+    try {
+      // We use the 'api' instance which automatically attaches the Bearer Token
+      const response = await api.get(`/books/${book._id}/download`, { 
+        responseType: 'blob' 
+      });
+      
+      // Create a temporary URL for the blob data
+      const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
+      setPdfBlobUrl(url);
+    } catch (err) {
+      console.error("Failed to load PDF preview", err);
+      alert("Could not load preview. You may not have permission.");
+    } finally {
+      setLoadingPdf(false);
+    }
   };
 
   useEffect(() => {
@@ -101,6 +131,13 @@ const BookDetails = () => {
     };
     fetchData();
   }, [id, user]); 
+
+  // Clean up the blob URL when component unmounts to save memory
+  useEffect(() => {
+    return () => {
+      if (pdfBlobUrl) window.URL.revokeObjectURL(pdfBlobUrl);
+    };
+  }, [pdfBlobUrl]);
 
   const toggleModal = () => setShowEditModal(!showEditModal);
 
@@ -222,6 +259,7 @@ const BookDetails = () => {
             </span>
           </div>
           <div className="relative w-64 md:w-80 h-96 shadow-2xl rounded-lg overflow-hidden transform hover:scale-105 transition-transform duration-300">
+            {/* ✅ UPDATED: Using helper that handles PDFs safely */}
             <img
               src={getBookCoverUrl(book.fileUrl)} 
               alt="Book Cover"
@@ -255,21 +293,38 @@ const BookDetails = () => {
               <>
                 {isIssuedByUser ? (
                   <div className="flex flex-col gap-3">
-                    {/* ✅ PDF ICON CARD */}
-                    <div className="bg-gray-50 border border-gray-200 rounded-xl p-6 flex flex flex-col items-center justify-center text-center">
-                        <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-3">
-                           <FileText className="w-8 h-8 text-red-600" />
+                    {/* ✅ NEW: PDF Preview Section */}
+                    <div className="bg-gray-50 border border-gray-200 rounded-xl p-4">
+                        <div className="flex justify-between items-center mb-2">
+                            <h3 className="font-bold text-gray-700 flex items-center gap-2">
+                                <FileText className="w-4 h-4"/> Document Preview
+                            </h3>
+                            {!pdfBlobUrl && (
+                                <button 
+                                    onClick={fetchSecurePdf}
+                                    className="text-xs bg-indigo-100 text-indigo-700 px-3 py-1 rounded hover:bg-indigo-200"
+                                >
+                                    Load Preview
+                                </button>
+                            )}
                         </div>
-                        <h3 className="font-bold text-gray-800 mb-1">PDF Document</h3>
-                        <p className="text-xs text-gray-500 mb-4">
-                            This file is ready for download. Click below to save it to your device.
-                        </p>
-                        <button 
-                           onClick={handleDownload}
-                           className="bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700 transition shadow-lg flex items-center gap-2"
-                        >
-                            <Download className="w-4 h-4" /> Download PDF
-                        </button>
+                        
+                        {loadingPdf && <p className="text-sm text-gray-500 animate-pulse">Loading secure preview...</p>}
+                        
+                        {pdfBlobUrl && (
+                            <div className="w-full h-64 border rounded bg-gray-200 overflow-hidden">
+                                <iframe src={pdfBlobUrl} className="w-full h-full" title="PDF Preview"></iframe>
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="flex gap-3">
+                      <button onClick={handleDownload} className="flex-1 bg-green-600 text-white py-3 rounded-lg font-semibold hover:bg-green-700 transition shadow-lg flex justify-center items-center gap-2">
+                        <Download className="w-5 h-5" /> Download PDF
+                      </button>
+                      <button onClick={handleReturn} className="flex-1 bg-orange-500 text-white py-3 rounded-lg font-semibold hover:bg-orange-600 transition shadow-lg flex justify-center items-center gap-2">
+                        <RotateCcw className="w-5 h-5" /> Return
+                      </button>
                     </div>
                   </div>
                 ) : (
