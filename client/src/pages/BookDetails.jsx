@@ -36,30 +36,30 @@ const BookDetails = () => {
   const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
   // ✅ FIXED: Helper to get Cover Image ONLY
-  const getBookCoverUrl = (fileUrl) => {
-    if (!fileUrl) {
-      return "https://via.placeholder.com/300x450?text=No+Cover";
-    }
+ const getBookCoverUrl = (fileUrl) => {
+  // If no file → show default image
+  if (!fileUrl) {
+    return bookCoverImage;
+  }
 
-    // ✅ CHECK 1: If it's a PDF, return a placeholder icon immediately
-    // This fixes the "Preview Error" and JpxImage errors in the image view.
-    if (fileUrl.toLowerCase().endsWith('.pdf')) {
-      return "https://via.placeholder.com/300x450?text=PDF+Document&bg=eee&color=333";
-    }
+  // If it's a PDF → show default cover image
+  if (fileUrl.toLowerCase().endsWith('.pdf')) {
+    return bookCoverImage;
+  }
 
-    // ✅ CHECK 2: Cloudinary or External URL
-    if (fileUrl.startsWith('http')) {
-      return fileUrl; 
-    }
+  // External URL (Cloudinary etc.)
+  if (fileUrl.startsWith('http')) {
+    return fileUrl;
+  }
 
-    // CHECK 3: Legacy Localhost Data
-    if (fileUrl.includes('localhost')) {
-      return fileUrl.replace('http://localhost:5000', API_BASE);
-    }
+  // Replace localhost base
+  if (fileUrl.includes('localhost')) {
+    return fileUrl.replace('http://localhost:5000', API_BASE);
+  }
 
-    // CHECK 4: Legacy Local Data
-    return `${API_BASE}/uploads/${fileUrl}`;
-  };
+  // Default local upload folder
+  return `${API_BASE}/uploads/${fileUrl}`;
+};
 
   // ✅ NEW: Function to fetch PDF securely (Solves 401 Error)
   const fetchSecurePdf = async () => {
@@ -259,15 +259,11 @@ const BookDetails = () => {
               {book.status}
             </span>
           </div>
-         <div className="relative w-64 md:w-80 h-96 shadow-2xl rounded-lg overflow-hidden transform hover:scale-105 transition-transform duration-300">
+     <div className="relative w-64 md:w-80 h-96 shadow-2xl rounded-lg overflow-hidden transform hover:scale-105 transition-transform duration-300">
   <img
-    src={getBookCoverUrl(book.fileUrl)} 
+    src={getBookCoverUrl(book?.fileUrl)}
     alt="Book Cover"
     className="w-full h-full object-cover"
-    onError={(e) => {
-      e.target.onerror = null; 
-      e.target.src = bookCoverImage;
-    }}
   />
 </div>
         </div>
