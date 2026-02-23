@@ -4,17 +4,16 @@ import { v2 as cloudinary } from 'cloudinary';
 import { CloudinaryStorage } from 'multer-storage-cloudinary';
 import Book from '../models/bookModel.js';
 import { protect, admin } from '../middleware/authMiddleware.js';
+import axios from 'axios'; // ✅ ADD THIS IMPORT FOR DOWNLOAD FIX
 
 const router = express.Router();
 
-// ✅ CORRECTED STORAGE CONFIGURATION
+// ✅ STORAGE CONFIGURATION (Keep as is)
 const storage = new CloudinaryStorage({
   cloudinary: cloudinary,
-  upload_preset: 'unsigned', // ✅ CRITICAL: This line fixes the 401 error
+  upload_preset: 'unsigned', 
   params: async (req, file) => {
-    // ✅ CORRECTED: Explicitly check file type
     if (file.mimetype === 'application/pdf') {
-      // It's a PDF: Force 'raw' resource type
       return {
         folder: 'librosys/books',
         format: 'pdf',
@@ -22,7 +21,6 @@ const storage = new CloudinaryStorage({
         public_id: `book-${Date.now()}-${Math.round(Math.random() * 1E9)}`
       };
     } else {
-      // It's an Image: Force 'image' resource type
       return {
         folder: 'librosys/books',
         allowed_formats: ['jpg', 'png', 'jpeg'],
@@ -45,7 +43,7 @@ router.get('/', async (req, res) => {
   }
 });
 
-// 2. DOWNLOAD ROUTE
+// 2. DOWNLOAD ROUTE (FIXED)
 router.get('/:id/download', protect, async (req, res) => {
   try {
     const book = await Book.findById(req.params.id);
@@ -63,11 +61,22 @@ router.get('/:id/download', protect, async (req, res) => {
       return res.status(404).json({ message: 'File not available' });
     }
 
-    return res.redirect(book.fileUrl);
+    // ✅ FIX: Fetch file from Cloudinary and stream it to user
+    // This bypasses 401/404 errors that happen with redirects
+    const response = await axios.get(book.fileUrl, { responseType: 'stream' });
+
+    // Set header to force browser to download the file
+    res.setHeader('Content-Disposition', `attachment; filename="${book.title}.pdf"`);
+    
+    // Pipe the data stream to the response
+    response.data.pipe(res);
 
   } catch (error) {
     console.error("Download Error:", error);
-    res.status(500).json({ message: 'Download failed' });
+    if (error.response && error.response.status === 401) {
+        return res.status(403).json({ message: 'Access denied. This file is private.' });
+    }
+    res.status(500).json({ message: 'Download failed. The file might be missing or restricted.' });
   }
 });
 
@@ -125,7 +134,7 @@ router.put('/:id', protect, admin, async (req, res) => {
   }
 });
 
-// 6. DELETE BOOK
+// 6. DELETE BOOK (FIXED)
 router.delete('/:id', protect, admin, async (req, res) => {
   try {
     const book = await Book.findById(req.params.id);
@@ -133,11 +142,17 @@ router.delete('/:id', protect, admin, async (req, res) => {
 
     if (book.fileUrl && book.fileUrl.includes('cloudinary')) {
       try {
+        // ✅ FIX: Extract resource type to handle PDFs correctly
+        const isPdf = book.fileUrl.includes('/raw/upload/');
+        const resourceType = isPdf ? 'raw' : 'image';
+
+        // Extract public_id logic
         const urlParts = book.fileUrl.split('/');
         const fileName = urlParts[urlParts.length - 1];
         const publicId = fileName.split('.')[0];
         
-        await cloudinary.uploader.destroy(`librosys/books/${publicId}`);
+        // Destroy with explicit resource type
+        await cloudinary.uploader.destroy(`librosys/books/${publicId}`, { resource_type: resourceType });
         console.log(`Deleted from Cloudinary: librosys/books/${publicId}`);
       } catch (cloudErr) {
         console.error("Cloudinary delete error:", cloudErr);
